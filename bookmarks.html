@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Document</title>
+    <style>
+      #bookmarks {
+        width: 500px;
+        margin: 0 auto;
+      }
+      #bookmark-list {
+        margin-top: 20px;
+      }
+      #bookmark-list a {
+        display: inline-block;
+        margin-right: 10px;
+        margin-bottom: 10px;
+      }
+      input[type="text"] {
+        display: inline-block;
+        margin-left: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="bookmarks">
+      <h1>Bookmarks</h1>
+      <div id="bookmark-list"></div>
+      <button id="add-bookmark-button">Add</button>
+      <button id="toggle-edit-delete-buttons">
+        Toggle
+      </button>
+      <div id="add-bookmark-form" style="display: none">
+        <input id="title" type="text" placeholder="Title" />
+        <input id="url" type="text" placeholder="URL" />
+        <input id="param" type="checkbox" /> Has parameter
+        <button id="add-bookmark-submit">OK</button>
+      </div>
+    </div>
+    <script>
+      const bookmarks = JSON.parse(localStorage.getItem("bookmarks")) || [];
+      const list = document.querySelector("#bookmark-list");
+      const addButton = document.querySelector("#add-bookmark-button");
+      const form = document.querySelector("#add-bookmark-form");
+      const titleInput = document.querySelector("#title");
+      const urlInput = document.querySelector("#url");
+      const paramInput = document.querySelector("#param");
+      const submitButton = document.querySelector("#add-bookmark-submit");
+      const filterInput = document.createElement("input");
+
+      filterInput.type = "text";
+      filterInput.placeholder = "Filter bookmarks...";
+      filterInput.addEventListener("input", () => {
+        const filterValue = filterInput.value.toLowerCase();
+        list.innerHTML = "";
+        bookmarks
+          .filter((bookmark) =>
+            bookmark.title.toLowerCase().includes(filterValue)
+          )
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .forEach((bookmark) => {
+            const item = document.createElement("div");
+            item.innerHTML = `
+      <a href="${bookmark.url}">${bookmark.title}</a>
+      ${
+        bookmark.hasParam
+          ? `<input type="text" placeholder="Enter parameter">`
+          : ""
+      }
+    `;
+            list.appendChild(item);
+            if (bookmark.hasParam) {
+              const paramInput = item.querySelector("input");
+              paramInput.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") {
+                  const link = item.querySelector("a");
+                  link.href += `${paramInput.value}`;
+                  link.click();
+                }
+              });
+            }
+          });
+      });
+      document
+        .querySelector("#bookmarks")
+        .insertBefore(filterInput, document.querySelector("#bookmark-list"));
+
+      function displayBookmarks() {
+        list.innerHTML = "";
+        bookmarks
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .forEach((bookmark) => {
+            const item = document.createElement("div");
+            item.innerHTML = `
+        <a href="${bookmark.url}">${bookmark.title}</a>
+        ${
+          bookmark.hasParam
+            ? `<input type="text" placeholder="Enter parameter">`
+            : ""
+        }
+        <button class="edit-button" style="display: none;">Edit</button>
+<button class="delete-button" style="display: none;">Delete</button>
+      `;
+            list.appendChild(item);
+
+            // Add event listener for the "param" input
+            if (bookmark.hasParam) {
+              const paramInput = item.querySelector("input");
+              paramInput.addEventListener("keydown", (event) => {
+                if (event.key === "Enter") {
+                  const link = item.querySelector("a");
+                  link.href += `${paramInput.value}`;
+                  link.click();
+                }
+              });
+            }
+
+            // Add event listener for the "delete" button
+            const deleteButton = item.querySelector(".delete-button");
+            deleteButton.addEventListener("click", () => {
+              const index = bookmarks.indexOf(bookmark);
+              bookmarks.splice(index, 1);
+              localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+              displayBookmarks();
+            });
+
+            const editButton = item.querySelector(".edit-button");
+
+            editButton.addEventListener("click", (event) => {
+              form.style.display = "block";
+              titleInput.value = bookmark.title;
+              urlInput.value = bookmark.url;
+              paramInput.checked = bookmark.hasParam;
+              submitButton.innerHTML = "OK";
+              submitButton.addEventListener("click", (e) => {
+                e.preventDefault();
+                if (titleInput.value === "" || urlInput.value === "") return;
+                bookmarks = bookmarks.filter((b) => b !== bookmark);
+                bookmark.title = titleInput.value;
+                bookmark.url = urlInput.value;
+                bookmark.hasParam = paramInput.checked;
+                bookmarks.push(bookmark);
+                localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+                displayBookmarks();
+                form.style.display = "none";
+              });
+            });
+
+            const toggleEditDeleteButtonsButton = document.querySelector(
+              "#toggle-edit-delete-buttons"
+            );
+            let showEditDeleteButtons = false;
+
+            toggleEditDeleteButtonsButton.addEventListener("click", () => {
+              showEditDeleteButtons = !showEditDeleteButtons;
+              list
+                .querySelectorAll(".edit-button, .delete-button")
+                .forEach((button) => {
+                  button.style.display = showEditDeleteButtons
+                    ? "inline-block"
+                    : "none";
+                });
+            });
+          });
+      }
+
+      addButton.addEventListener("click", () => {
+        form.style.display = "block";
+      });
+
+      submitButton.addEventListener("click", () => {
+        const title = titleInput.value;
+        const url = urlInput.value;
+        const hasParam = paramInput.checked;
+        bookmarks.push({ title, url, hasParam, timestamp: Date.now() });
+        localStorage.setItem("bookmarks", JSON.stringify(bookmarks));
+        form.style.display = "none";
+        titleInput.value = "";
+        urlInput.value = "";
+        paramInput.checked = false;
+        displayBookmarks();
+      });
+
+      displayBookmarks();
+    </script>
+  </body>
+</html>
